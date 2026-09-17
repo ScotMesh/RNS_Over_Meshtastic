@@ -1,3 +1,32 @@
+![ScotMesh Reticulum](https://raw.githubusercontent.com/ScotMesh/branding/main/networks/reticulum/readme-header.png)
+
+# RNS over Meshtastic — ScotMesh fork
+
+> **This is a fork of [landandair/RNS_Over_Meshtastic](https://github.com/landandair/RNS_Over_Meshtastic), maintained by ScotMesh for the gateway at The Pole, Cadham.** The upstream documentation follows below, unchanged; this box lists what is different.
+>
+> **Two new interface options**, both optional, with the upstream behaviour when unset:
+>
+> | Option | What it does | Default |
+> |---|---|---|
+> | `channel_index` | Sends and receives the tunnel on this Meshtastic channel slot instead of the primary channel (0). Put the tunnel on its own secondary channel so it doesn't share the public channel's key and traffic. Packets on other channels are ignored. | `0` |
+> | `announce_max_hops` | Drops outgoing **announces** that have already travelled more than this many Reticulum hops. On a transport node with a backbone, this stops the whole route table being re-announced onto a shared LoRa channel, while still allowing a mode such as `gateway`. Path responses are exempt, so path lookups still work. | off |
+>
+> `hop_limit` is also clamped to 0–7, since Meshtastic stores it in 3 bits.
+>
+> ```ini
+> [[Meshtastic Interface]]
+>   type = Meshtastic_Interface
+>   enabled = yes
+>   mode = gateway
+>   port = /dev/ttyUSB0
+>   data_speed = 0            # LongFast
+>   channel_index = 1         # the tunnel's own channel
+>   hop_limit = 7
+>   announce_max_hops = 2     # transport nodes only
+> ```
+>
+> How to join ScotMesh's tunnel: [Reticulum over MeshCore and Meshtastic](https://wiki.scotmesh.net/wiki/Reticulum_over_MeshCore_and_Meshtastic). The MeshCore counterpart is [ScotMesh/RNS_Over_Meshcore](https://github.com/ScotMesh/RNS_Over_Meshcore).
+
 # RNS_Over_Meshtastic
 Interface for RNS using Meshtastic as the underlying networking layer to utilize existing meshtastic hardware.
 
