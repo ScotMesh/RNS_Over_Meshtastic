@@ -4,12 +4,13 @@
 
 > **This is a fork of [landandair/RNS_Over_Meshtastic](https://github.com/landandair/RNS_Over_Meshtastic), maintained by ScotMesh for the gateway at The Pole, Cadham.** The upstream documentation follows below, unchanged; this box lists what is different.
 >
-> **Two new interface options**, both optional, with the upstream behaviour when unset:
+> **New interface options**, all optional:
 >
 > | Option | What it does | Default |
 > |---|---|---|
 > | `channel_index` | Sends and receives the tunnel on this Meshtastic channel slot instead of the primary channel (0). Put the tunnel on its own secondary channel so it doesn't share the public channel's key and traffic. Packets on other channels are ignored. | `0` |
 > | `announce_max_hops` | Drops outgoing **announces** that have already travelled more than this many Reticulum hops. On a transport node with a backbone, this stops the whole route table being re-announced onto a shared LoRa channel, while still allowing a mode such as `gateway`. Path responses are exempt, so path lookups still work. | off |
+> | `fragment_size` | Bytes of Reticulum data per Meshtastic packet. Upstream's 200 makes LoRa frames of about 249 bytes, which gateways that pass frames through meshtasticd's simulated radio (a 233-byte field), such as RepeaterTastic, cannot take. Fragments of different sizes still reassemble, so senders and receivers may differ. | `180` (upstream: 200) |
 >
 > `hop_limit` is also clamped to 0–7, since Meshtastic stores it in 3 bits.
 >
