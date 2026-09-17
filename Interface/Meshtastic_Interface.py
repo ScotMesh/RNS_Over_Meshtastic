@@ -96,6 +96,11 @@ class MeshtasticInterface(Interface):
         hop_limit = max(0, min(hop_limit, 7))  # Meshtastic hop_limit is a 3-bit field
         channel_index = int(ifconf["channel_index"]) if "channel_index" in ifconf else 0
         announce_max_hops = int(ifconf["announce_max_hops"]) if "announce_max_hops" in ifconf else None
+        # Bytes of RNS data per Meshtastic packet. 200 (upstream) makes ~249-byte LoRa frames, too big
+        # for gateways that hand frames to meshtasticd's simulated radio (a 233-byte field), such as
+        # RepeaterTastic; 180 keeps frames near 229 bytes. Senders and receivers may differ.
+        fragment_size = int(ifconf["fragment_size"]) if "fragment_size" in ifconf else 180
+        fragment_size = max(32, min(fragment_size, 200))
 
         # All interfaces must supply a hardware MTU value
         # to the RNS Transport instance. This value should
@@ -132,6 +137,7 @@ class MeshtasticInterface(Interface):
         self.hop_limit = hop_limit
         self.channel_index = channel_index
         self.announce_max_hops = announce_max_hops
+        self.fragment_size = fragment_size
 
         pub.subscribe(self.process_message, "meshtastic.receive")
         pub.subscribe(self.connection_complete, "meshtastic.connection.established")
@@ -233,7 +239,7 @@ class MeshtasticInterface(Interface):
             dest = BROADCAST_ADDR
             if data[2:18] in self.dest_to_node_dict:  # lookup to see if destination is found
                 dest = self.dest_to_node_dict[data[2:18]]
-            handler = PacketHandler(data, self.packet_index, custom_destination_id=dest)
+            handler = PacketHandler(data, self.packet_index, max_payload=self.fragment_size, custom_destination_id=dest)
             for key in handler.get_keys():
                 self.packet_i_queue.append((handler.index, key))
             self.outgoing_packet_storage[handler.index] = handler
