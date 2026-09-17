@@ -96,10 +96,13 @@ class MeshtasticInterface(Interface):
         hop_limit = max(0, min(hop_limit, 7))  # Meshtastic hop_limit is a 3-bit field
         channel_index = int(ifconf["channel_index"]) if "channel_index" in ifconf else 0
         announce_max_hops = int(ifconf["announce_max_hops"]) if "announce_max_hops" in ifconf else None
-        # Bytes of RNS data per Meshtastic packet. 200 (upstream) makes ~249-byte LoRa frames, too big
-        # for gateways that hand frames to meshtasticd's simulated radio (a 233-byte field), such as
-        # RepeaterTastic; 180 keeps frames near 229 bytes. Senders and receivers may differ.
-        fragment_size = int(ifconf["fragment_size"]) if "fragment_size" in ifconf else 180
+        # Bytes of RNS data per Meshtastic packet (each also carries a 2-byte header). Gateways that
+        # hand frames to meshtasticd's simulated radio, such as RepeaterTastic, take at most 230 bytes
+        # of encrypted Data. meshtasticd 2.8 adds a 64-byte XEdDSA signature to a broadcast whenever
+        # the signed Data still fits a LoRa frame, which makes packets of 158-166 bytes too big for
+        # them (231-239 bytes signed). 155 keeps every packet signed and within 230 bytes.
+        # Senders and receivers may use different sizes.
+        fragment_size = int(ifconf["fragment_size"]) if "fragment_size" in ifconf else 155
         fragment_size = max(32, min(fragment_size, 200))
 
         # All interfaces must supply a hardware MTU value

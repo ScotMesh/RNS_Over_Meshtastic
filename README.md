@@ -10,7 +10,7 @@
 > |---|---|---|
 > | `channel_index` | Sends and receives the tunnel on this Meshtastic channel slot instead of the primary channel (0). Put the tunnel on its own secondary channel so it doesn't share the public channel's key and traffic. Packets on other channels are ignored. | `0` |
 > | `announce_max_hops` | Drops outgoing **announces** that have already travelled more than this many Reticulum hops. On a transport node with a backbone, this stops the whole route table being re-announced onto a shared LoRa channel, while still allowing a mode such as `gateway`. Path responses are exempt, so path lookups still work. | off |
-> | `fragment_size` | Bytes of Reticulum data per Meshtastic packet. Upstream's 200 makes LoRa frames of about 249 bytes, which gateways that pass frames through meshtasticd's simulated radio (a 233-byte field), such as RepeaterTastic, cannot take. Fragments of different sizes still reassemble, so senders and receivers may differ. | `180` (upstream: 200) |
+> | `fragment_size` | Bytes of Reticulum data per Meshtastic packet. Gateways that pass frames through meshtasticd's simulated radio, such as RepeaterTastic, take at most 230 bytes of encrypted data. meshtasticd 2.8 signs a broadcast (+66 bytes) whenever it still fits a LoRa frame, so packets of 158–166 bytes end up too big once signed; 155 keeps every packet signed and within the limit. Fragments of different sizes still reassemble, so senders and receivers may differ. | `155` (upstream: 200) |
 >
 > `hop_limit` is also clamped to 0–7, since Meshtastic stores it in 3 bits.
 >
