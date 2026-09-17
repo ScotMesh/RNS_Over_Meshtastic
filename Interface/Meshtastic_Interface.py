@@ -93,6 +93,9 @@ class MeshtasticInterface(Interface):
         tcp_port = ifconf["tcp_port"] if "tcp_port" in ifconf else None
         speed = int(ifconf["data_speed"]) if "data_speed" in ifconf else 8
         hop_limit = int(ifconf["hop_limit"]) if "hop_limit" in ifconf else 1
+        hop_limit = max(0, min(hop_limit, 7))  # Meshtastic hop_limit is a 3-bit field
+        channel_index = int(ifconf["channel_index"]) if "channel_index" in ifconf else 0
+        announce_max_hops = int(ifconf["announce_max_hops"]) if "announce_max_hops" in ifconf else None
 
         # All interfaces must supply a hardware MTU value
         # to the RNS Transport instance. This value should
@@ -127,6 +130,8 @@ class MeshtasticInterface(Interface):
         self.dest_to_node_dict = {}
         self.packet_index = 0
         self.hop_limit = hop_limit
+        self.channel_index = channel_index
+        self.announce_max_hops = announce_max_hops
 
         pub.subscribe(self.process_message, "meshtastic.receive")
         pub.subscribe(self.connection_complete, "meshtastic.connection.established")
@@ -208,7 +213,20 @@ class MeshtasticInterface(Interface):
     # The running Reticulum Transport instance will
     # call this method on the interface whenever the
     # interface must transmit a packet.
+    @staticmethod
+    def announce_exceeds_hops(data: bytes, max_hops):
+        """True for an RNS announce that has travelled more than max_hops to reach this
+        node. Path responses are exempt so on-demand path lookups still work."""
+        if max_hops is None or len(data) < 19 or data[0] & 0b11 != RNS.Packet.ANNOUNCE:
+            return False
+        context_offset = 34 if data[0] & 0b01000000 else 18  # HEADER_2 carries a 16-byte transport id
+        if len(data) > context_offset and data[context_offset] == RNS.Packet.PATH_RESPONSE:
+            return False
+        return data[1] > max_hops
+
     def process_outgoing(self, data: bytes):
+        if self.announce_exceeds_hops(data, self.announce_max_hops):
+            return
         if len(self.packet_i_queue) < 256:
             # Then write the framed data to the port
             from meshtastic import BROADCAST_ADDR
@@ -224,7 +242,7 @@ class MeshtasticInterface(Interface):
     def process_message(self, packet, interface):
         """Process meshtastic traffic incoming to system"""
         # RNS.log(f'From: {packet["from"]}, payload: {packet["decoded"]["portnum"], packet["decoded"]["payload"]}')
-        if "decoded" in packet:
+        if "decoded" in packet and packet.get("channel", 0) == self.channel_index:
             if packet["decoded"]["portnum"] == "RETICULUM_TUNNEL_APP":
                 if packet["from"] not in self.expected_index:
                     self.expected_index[packet["from"]] = []
@@ -299,7 +317,7 @@ class MeshtasticInterface(Interface):
                                         destinationId=dest,
                                         wantAck=False,
                                         wantResponse=False,
-                                        channelIndex=0,
+                                        channelIndex=self.channel_index,
                                         hopLimit=self.hop_limit)
             time.sleep(sleep_time)  # Make sending rate dynamic
 
